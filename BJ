@@ -1,0 +1,113 @@
+#ゲームは、1人のディーラーと1人のプレーヤーで対戦します
+#ジョーカーを除く52枚のトランプカード（以降カード）を良く切り、裏返しにして山札とします
+#ゲームを開始すると、以下の順番で山札から1枚ずつ配ります。配られたカードを各人の手札とします
+#プレーヤーに1枚
+#ディーラーに1枚（このカードはプレーヤーに見えるようにします）
+#プレーヤーに1枚
+#ディーラーに1枚（このカードはプレーヤーに見えないようにします）
+#プレーヤーは、手札のポイントが20以下の間、山札から1枚ずつ何度でも引けます。引かないこともできます
+#プレーヤーの手札のポイントが22以上であれば、プレーヤーの負けです
+#ディーラーは、手札のポイントが16以下の間、必ず山札から1枚ずつ引きます。17以上になったら引きません
+#ディーラーの手札のポイントが22以上であれば、プレーヤーの勝ちです
+#ポイントが同じであれば、引き分けです
+#ポイントが大きい方の勝ちです
+
+import random
+
+class Card:
+    def __init__(self, num):
+        self.suit = num // 13 + 1
+        self.rank = num % 13 + 1
+
+    def point(self):
+        return min(10, self.rank)
+
+    def __str__(self):
+        s = '♦♥♠♣'[self.suit - 1]
+        r = 'Ａ⒉⒊⒋⒌⒍⒎⒏⒐⒑ＪＱＫ'[self.rank - 1]
+        return s + r
+
+class Owner:
+    def __init__(self):
+        self.hands = []
+
+    def draw(self, bj):
+        self.hands.append(bj.pop())
+
+    def sequence(self, hide=False):
+        s = ''.join(str(cd) for cd in self.hands)
+        return s[:2] + '＊＊' + s[4:] if hide else s
+
+    def point(self):  # Aを1と11どちらでも扱える
+        p = sum(cd.point() for cd in self.hands)
+        for cd in self.hands:
+            if cd.rank == 1 and p + 10 <= 21:
+                p += 10
+        return p
+
+class Dealer(Owner):
+
+    def act(self, bj):
+        while self.point() <= 16:
+            self.draw(bj)
+class Player(Owner):
+    def ask(self):
+            print('もう1枚引く？(y/n) ', end='')
+            return input()
+
+    def act(self, bj):
+        while self.point() <= 20:
+            bj.show(True)
+            s = ''
+            while s != 'y' and s != 'n':
+                s = self.ask()
+            if s == 'n':
+                break
+            self.draw(bj)
+
+
+class Blackjack:
+    def __init__(self, seed):
+        self.cards = [Card(i) for i in range(52)]
+        random.seed(seed)
+        random.shuffle(self.cards)
+        self.player = Player()
+        self.dealer = Dealer()
+
+    def pop(self):
+        return self.cards.pop(0)
+
+    def start_game(self):
+        for _ in range(2):
+            self.player.draw(self)
+            self.dealer.draw(self)
+        self.player.act(self)
+        player_point = self.player.point()
+        self.message = 'You lose.'
+        if player_point <= 21:
+            self.dealer.act(self)
+            dealer_point = self.dealer.point()
+            if player_point == dealer_point:
+                self.message = 'Draw.'
+            elif dealer_point >= 22 or dealer_point < player_point:
+                self.message = 'You win.'
+        self.show(False)
+        print(self.message)
+
+    def show(self, hide):
+        p = self.player.point()
+        s = self.player.sequence()
+        print(f'Player({p}): {s}')
+        p = '--' if hide else self.dealer.point()
+        s = self.dealer.sequence(hide)
+        print(f'Dealer({p}): {s}')
+
+    def pop(self):
+        return self.cards.pop(0)
+
+
+if __name__ == '__main__':
+    bj = Blackjack(0)  # 引数を変えると山札も変わります
+    bj.start_game()
+
+
